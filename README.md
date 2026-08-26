@@ -61,11 +61,11 @@ The solution:
 
 ### Before
 
-![Before Rebar AutoDim](09-Result/before.png)
+![Before Rebar AutoDim](09-Result/before.jpg)
 
 ### After
 
-![After Rebar AutoDim](09-Result/after.png)
+![After Rebar AutoDim](09-Result/after.jpg)
 
 ---
 
