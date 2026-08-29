@@ -1,63 +1,273 @@
-# Rebar AutoDim — System Analysis Portfolio
+# Rebar AutoDim — System Analysis
 
-> Automated dimensioning of rectangular `Area Reinforcement` zones in Autodesk Revit 2025.
+> **SSAD-based system-analysis case for deterministic dimensioning of rectangular `Area Reinforcement` zones in Autodesk Revit 2025.**
 
-Rebar AutoDim is a custom Revit plugin created to replace repetitive manual reinforcement annotation work with deterministic geometry-based automation.
+Rebar AutoDim is a real implemented Revit plugin that replaces repetitive manual reinforcement annotation with a view-aware, geometry-driven and regenerable native annotation workflow.
 
-The project covers the full path from problem analysis and requirements to system design, Revit API interaction and production-ready behavior.
+This repository is being structured with **[SSAD — System-Structured Analysis Documentation](https://github.com/branch-danya-dev/ssad-methodology)**.
+
+The system knowledge is organized around what the plugin is responsible for, not around document types such as `requirements`, `design`, `API` or `errors`.
 
 ---
 
-## Problem
+## System problem
 
-Before automation, engineers manually processed each reinforcement zone:
+Before automation, engineers manually processed each supported reinforcement zone:
 
-- recreated supporting detail geometry;
+- interpreted the zone geometry on the current drawing view;
+- created supporting geometry where necessary;
 - added overall width and height dimensions;
-- selected nearby structural grids;
-- created grid offset dimensions;
-- adjusted parallel dimension lines;
-- repeated the same work after model changes.
+- searched for suitable structural grids;
+- created grid-offset dimensions;
+- adjusted parallel annotation lines;
+- repeated the work after model changes.
 
-The required geometry already existed in the Revit model, but there was no automatic workflow that converted it into a complete annotation layout.
+The model already contained the structural evidence, but there was no deterministic system that transformed that evidence into a complete annotation result.
 
 ---
 
-## Solution
+## System meaning
 
-Rebar AutoDim processes all supported `Area Reinforcement` zones visible on the active view.
+Rebar AutoDim does not own reinforcement design.
+
+It owns the transformation:
 
 ```text
-Area Reinforcement
+CURRENT REVIT MODEL + ACTIVE VIEW
         ↓
-Geometry Analysis
+execution context
         ↓
-Grid Selection
+normalized zone geometry
         ↓
-Dimension Placement
+valid dimension references
         ↓
-Native Revit Annotations
+dimension intent + layout
+        ↓
+native annotation result
+        ↓
+regenerable plugin-owned output
 ```
 
-The solution:
+Core invariant:
 
-- interprets geometry in active-view coordinates;
-- calculates zone width and height;
-- finds the nearest valid structural grids by direction;
-- creates deterministic dimension layouts;
-- uses stable Revit references for dimension creation;
-- regenerates previous output instead of accumulating duplicates.
+> **The plugin reads structural truth and writes its own annotation layer. It must not change source reinforcement geometry to make annotation easier.**
 
 ---
 
-## Before / After
+## Responsibility structure
+
+```text
+system/
+├─ cross-system boundary, invariants and synthesis
+│
+execution-context/
+├─ active view, local coordinate frame and candidate-zone scope
+│
+geometry/
+├─ supported rectangular-zone interpretation and validity
+│
+references/
+├─ directional structural references and dimensionable-reference meaning
+│
+layout/
+├─ dimension intent, sides, offsets and scale-aware placement
+│
+annotations/
+├─ native generated annotation-set semantics
+│
+regeneration/
+├─ generated-output ownership, replacement and repeated execution
+│
+revit-boundary/
+├─ Revit API evidence, read/write scope, references and transactions
+│
+evidence/
+└─ before/after and implementation outcome evidence
+```
+
+Start with [`system/`](system/README.md).
+
+---
+
+## Core responsibility flow
+
+```mermaid
+flowchart TD
+    U[User runs command] --> C[Execution Context]
+    C --> G[Zone Geometry]
+    G --> R[Reference Resolution]
+    R --> L[Annotation Layout]
+    L --> A[Generated Annotation Set]
+    A --> H[Revit Host Boundary]
+    H --> O[Native Revit Output]
+    O --> X[Regeneration Ownership]
+
+    M[Revit model + active view] --> C
+    M --> G
+    M --> R
+    M --> H
+
+    G -. uncertain geometry .-> S[Skip affected zone]
+    R -. optional reference missing .-> L
+    H -. unsafe transaction failure .-> B[Rollback]
+```
+
+---
+
+## Important distinctions
+
+### View orientation is not project orientation
+
+Width, height and directional placement are interpreted in the active-view coordinate frame.
+
+```text
+Model XYZ
+   ↓
+Active View
+   ↓
+(u, v, w)
+```
+
+This prevents annotation behavior from depending on global project-axis orientation.
+
+See [`execution-context/`](execution-context/README.md) and [`geometry/`](geometry/README.md).
+
+### Structural target is not a Revit API reference
+
+The system first decides **what should be referenced**.
+
+Only then does it determine **how that intent can be represented through Revit-compatible `Reference` objects**.
+
+```text
+semantic target
+        ↓
+reference realization
+        ↓
+ReferenceArray
+        ↓
+native Revit dimension
+```
+
+A Revit API workaround must not change the structural meaning of the dimension.
+
+See [`references/`](references/README.md) and [`revit-boundary/`](revit-boundary/README.md).
+
+### Nearest grid is directional
+
+The nearest structural grid is selected independently for `left`, `right`, `above` and `below`.
+
+```text
+          Above
+            ↑
+            │
+Left ← [ Zone ] → Right
+            │
+            ↓
+          Below
+```
+
+A globally closer grid on the wrong side is not valid for that direction.
+
+See [`references/`](references/README.md).
+
+### Missing optional grid is not an invalid zone
+
+A valid zone always targets overall width/height dimensions.
+
+Grid-offset dimensions are conditional on a meaningful reference for that side.
+
+```text
+valid zone
+→ width + height
+
+left grid found
+→ left offset dimension
+
+right grid missing
+→ no right offset dimension
+```
+
+### Re-run is replacement, not append
+
+```text
+Previous plugin-owned result
+        ↓
+Remove
+        ↓
+Read current Revit state
+        ↓
+Recalculate
+        ↓
+Create one new current result
+```
+
+Repeated execution should converge to an equivalent annotation result rather than accumulate duplicate dimensions.
+
+See [`regeneration/`](regeneration/README.md).
+
+---
+
+## Revit boundary
+
+Revit remains authoritative for model/view state and native API validity.
+
+The plugin reads:
+
+- active document and view;
+- `Area Reinforcement` identity and geometry;
+- structural grids;
+- existing plugin metadata.
+
+The plugin writes only its generated annotation layer:
+
+- supporting detail curves;
+- native dimensions;
+- plugin-owned generated groups/elements;
+- generation metadata.
+
+All writes must respect Revit transaction semantics.
+
+See [`revit-boundary/`](revit-boundary/README.md).
+
+---
+
+## Failure philosophy
+
+The central safety rule is:
+
+> **A missing annotation is preferable to an annotation that confidently misrepresents uncertain geometry or an invalid reference.**
+
+Failures are kept local where possible:
+
+```text
+unsupported view
+→ stop before writes
+
+invalid zone geometry
+→ skip zone
+
+missing optional grid
+→ omit affected grid dimension
+
+invalid optional dimension reference
+→ skip affected dimension when safe
+
+transaction safety failure
+→ rollback affected write scope
+```
+
+Detailed failure knowledge will be migrated from the legacy documents into the responsibility that owns each condition.
+
+---
+
+## Before / After evidence
 
 | Before | After |
 |---|---|
-| Manual zone-by-zone processing | One command per active view |
-| Manual grid selection | Directional rule-based selection |
-| Manual dimension placement | Deterministic placement |
-| Manual correction after changes | Full regeneration |
+| Manual zone-by-zone annotation | One deterministic command per active view |
+| Manual grid selection | Directional reference resolution |
+| Manual dimension placement | Rule-based layout |
+| Duplicate-prone reruns | Full regeneration |
 
 ### Before
 
@@ -67,88 +277,92 @@ The solution:
 
 ![After Rebar AutoDim](09-Result/after.jpg)
 
+The screenshots are implementation evidence. Canonical system rules live in the responsibility areas above.
+
+See [`evidence/`](evidence/README.md).
+
 ---
 
-## Key System Decisions
+## Structural migration status
 
-### View-based geometry
-
-Width, height and placement are calculated relative to the active Revit view instead of global project X/Y axes.
-
-### Directional grid selection
-
-The nearest structural reference is selected independently for `left`, `right`, `above` and `below`.
-
-### Stable dimension references
-
-Supporting detail geometry is created where required to provide references accepted by the Revit dimension API.
-
-### Regeneration instead of patching
+The original repository is organized as a document/process sequence:
 
 ```text
-Previous Result
-      ↓
-Delete
-      ↓
-Read Current Geometry
-      ↓
-Recalculate
-      ↓
-Create New Result
+01-Scope-and-Problem/
+02-AS-IS-and-TO-BE/
+03-Requirements/
+04-System-Design/
+05-Geometry-and-Placement/
+06-Revit-API-Interaction/
+07-Errors-and-Rerun/
+08-Traceability/
+09-Result/
 ```
 
-This keeps repeated execution predictable and prevents duplicate annotations.
+Those files are temporarily retained as **migration sources**.
+
+They are not the target SSAD knowledge architecture.
+
+The migration audit lives in [`system/legacy-knowledge-map.md`](system/legacy-knowledge-map.md).
+
+The next passes will:
+
+```text
+legacy claims
+→ assign canonical owner
+→ preserve useful BR/FR/NFR/AC traceability
+→ migrate diagrams near their owners
+→ relocate outcome evidence
+→ remove superseded numbered artifact tree
+```
+
+No legacy file should be removed until its useful knowledge is represented by the active canonical model.
 
 ---
 
-## Documentation
+## Why this is an interesting SSAD case
 
-| Section | Content |
-|---|---|
-| [01 — Scope and Problem](01-Scope-and-Problem/) | Scope, constraints and problem definition |
-| [02 — AS-IS and TO-BE](02-AS-IS-and-TO-BE/) | Manual and automated workflows |
-| [03 — Requirements](03-Requirements/) | Functional requirements, NFRs, business rules and acceptance criteria |
-| [04 — System Design](04-System-Design/) | Solution overview, components and system context |
-| [05 — Geometry and Placement](05-Geometry-and-Placement/) | Geometry normalization, grid selection and dimension placement |
-| [06 — Revit API Interaction](06-Revit-API-Interaction/) | API boundaries and interaction sequence |
-| [07 — Errors and Re-run](07-Errors-and-Rerun/) | Edge cases, failure behavior and idempotency |
-| [08 — Traceability](08-Traceability/) | Requirement-to-behavior mapping |
-| [09 — Result](09-Result/) | Before / after and project outcome |
+This project has a very different shape from both a service-oriented product and an enterprise migration programme.
 
----
+It is a **host-application automation system** where:
 
-## Project Outcome
+- Revit owns the underlying model and API rules;
+- the plugin owns a narrow analytical transformation;
+- geometry meaning depends on active-view context;
+- semantic references must be translated into host-compatible references;
+- native write operations require transaction safety;
+- generated output has its own ownership and regeneration lifecycle.
 
-The solution was accepted by the customer and introduced into regular company use.
+That makes it useful for testing whether SSAD can separate:
 
-It replaced a repetitive manual documentation workflow with a deterministic Revit API-based process.
+```text
+system meaning
+from
+host API mechanics
+```
 
----
-
-## My Contribution
-
-I designed and implemented the solution from scratch, including:
-
-- requirements clarification;
-- AS-IS / TO-BE analysis;
-- automation rules;
-- geometry-processing logic;
-- grid-selection rules;
-- dimension-placement logic;
-- Revit API interaction design;
-- repeated-execution behavior;
-- implementation and testing.
+without losing implementation awareness.
 
 ---
 
-## Tech Context
+## Project outcome
 
-`Autodesk Revit 2025` · `Revit API` · `C#` · `.NET` · `PlantUML`
+The solution was implemented, accepted by the customer and introduced into regular company use.
+
+It replaced repetitive manual reinforcement annotation with a deterministic Revit API-based workflow.
+
+The existing implementation/project outcome is retained under [`09-Result/outcome.md`](09-Result/outcome.md) while evidence migration is in progress.
 
 ---
 
-## Implementation
+## Tech context
 
-This repository focuses on system analysis and solution design.
+`Autodesk Revit 2025` · `Revit API` · `C#` · `.NET`
 
-The source-code repository can be linked here separately when published.
+---
+
+## Methodology
+
+**[SSAD — System-Structured Analysis Documentation](https://github.com/branch-danya-dev/ssad-methodology)**
+
+> **The system determines the knowledge structure. Document types do not.**
