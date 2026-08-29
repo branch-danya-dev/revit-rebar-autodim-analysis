@@ -8,6 +8,38 @@ The repository is structured with **[SSAD — System-Structured Analysis Documen
 
 ---
 
+## Project context
+
+This is a **real implemented automation project**, not a hypothetical training case. The task grew from a BIM documentation workflow where dimensions for `Area Reinforcement` zones were repeatedly created and corrected manually in Autodesk Revit.
+
+| Question | Project context |
+|---|---|
+| **My role** | **System Analyst · Solution Designer · Developer.** I formalized the expected system behavior, designed the solution and implemented the Revit plugin. |
+| **Who I worked with** | **BIM architects acted as domain experts.** Their real working process, Revit constraints and expected annotation behavior supplied and validated the domain knowledge used by the solution. |
+| **How analysis and implementation interacted** | Analysis was not handed off and forgotten. Revit API limitations discovered during implementation fed back into the system model — especially around view-space geometry, usable references, transaction boundaries and regeneration. |
+| **What this repository represents** | A **sanitized, reader-oriented reconstruction of the system knowledge** accumulated through the real project. It is not a publication of internal company workflow documents or a claim that the production team maintained this exact GitHub structure during delivery. |
+| **Outcome** | The plugin was implemented, accepted by the customer and introduced into regular company use. |
+
+In short, the delivery loop was:
+
+```text
+BIM workflow + domain expertise
+        ↓
+System analysis
+        ↓
+Solution design
+        ↓
+Implementation in Revit
+        ↓
+Real-use validation
+        ↓
+Refined system knowledge
+```
+
+The rest of this repository focuses on the **system-analysis decisions themselves**: what the plugin owns, how geometry is interpreted, how semantic intent is separated from Revit API mechanics, how failures are isolated and how generated results are safely regenerated.
+
+---
+
 ## System in one flow
 
 ```mermaid
