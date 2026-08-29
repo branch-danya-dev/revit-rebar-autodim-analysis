@@ -40,6 +40,34 @@ The rest of this repository focuses on the **system-analysis decisions themselve
 
 ---
 
+## Working implementation
+
+The system described in this analysis is available as a **publicly downloadable Revit 2025 demo build**. The distributed add-in is published as **RebarDimmer**.
+
+<p>
+  <a href="https://github.com/branch-danya-dev/revit-rebar-autodim">
+    <img src="https://img.shields.io/badge/Implementation-RebarDimmer-181717?style=for-the-badge&logo=github&logoColor=white" alt="RebarDimmer implementation repository" />
+  </a>
+  &nbsp;
+  <a href="https://github.com/branch-danya-dev/revit-rebar-autodim/releases/latest">
+    <img src="https://img.shields.io/badge/Download-Revit%202025%20Demo-186BFF?style=for-the-badge&logo=autodesk&logoColor=white" alt="Download RebarDimmer demo" />
+  </a>
+</p>
+
+The two repositories intentionally have different responsibilities:
+
+```text
+revit-rebar-autodim-analysis
+→ system analysis, decisions and canonical system knowledge
+
+revit-rebar-autodim
+→ compiled add-in distribution, screenshots, installation and demo release
+```
+
+This makes the analysis directly verifiable against a working implementation without turning the analysis repository into a source-code or release-distribution repository.
+
+---
+
 ## System in one flow
 
 ```mermaid
