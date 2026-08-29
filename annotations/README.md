@@ -1,115 +1,43 @@
 # Generated Annotations
 
-This area owns the canonical meaning of the **plugin-generated annotation result** for one supported reinforcement zone.
+This area owns **what one current plugin-generated annotation result means for one eligible source zone**.
 
-It answers:
-
-> **What native annotation set should represent the calculated dimension intent in Revit?**
-
-## Owned knowledge
-
-Annotations owns:
-
-- the composition of one generated annotation result;
-- required overall dimensions;
-- optional grid-offset dimensions;
-- supporting detail geometry when needed to realize stable references;
-- association of created native elements into one plugin-owned result;
-- the distinction between source model data and generated annotation data.
-
-It does **not** own:
-
-- geometry interpretation — [`geometry/`](../geometry/);
-- reference-target selection — [`references/`](../references/);
-- placement policy — [`layout/`](../layout/);
-- lifecycle/replacement of an older result — [`regeneration/`](../regeneration/);
-- transaction semantics — [`revit-boundary/`](../revit-boundary/).
-
-## Annotation-set model
-
-Conceptually:
+## Canonical result
 
 ```text
-GeneratedAnnotationSet
-├── source Area Reinforcement identity
-├── supporting detail curves, when required
-├── Overall Width dimension
-├── Overall Height dimension
-├── Left Grid Offset? 
-├── Right Grid Offset?
-├── Above Grid Offset?
-├── Below Grid Offset?
-└── persistent generation identity/metadata link
+Generated Annotation Result
+├── mandatory Overall Width
+├── mandatory Overall Height
+├── optional Left Grid Offset
+├── optional Right Grid Offset
+├── optional Above Grid Offset
+├── optional Below Grid Offset
+├── supporting detail geometry when required
+└── ownership metadata / association
 ```
 
-The optional dimensions are absent when their reference intent is not available or not meaningful.
+The result lives in the native Revit annotation layer. Source reinforcement and structural grid geometry remain read-only.
 
-## Source vs generated layer
-
-The plugin must preserve this boundary:
+## Important distinction
 
 ```text
-SOURCE STRUCTURAL MODEL
-Area Reinforcement
-Structural Grids
-        ↓ read only
-
-REBAR AUTODIM
-        ↓ writes
-
-GENERATED ANNOTATION LAYER
-Detail Curves
-Dimensions
-Generated Group / Ownership Metadata
+conditional target absent
+!=
+required target failed to realize
 ```
 
-The annotation result communicates model facts. It must not mutate the reinforcement design in order to make annotation easier.
+A zone can be complete without a right-grid dimension when no valid right-side grid exists. It cannot be called complete if its mandatory width or height dimension could not be created safely.
 
-## Supporting detail geometry
+## Canonical detail
 
-Supporting detail curves may be needed because raw `Area Reinforcement` boundaries do not always expose references accepted by the Revit dimension API.
+→ [`result-model.md`](result-model.md) — mandatory vs conditional content, native-result semantics, completeness verification and legacy anchors.
 
-Their purpose is technical:
+## Does not own
 
-```text
-normalized zone boundary intent
-        ↓
-supporting detail curve
-        ↓
-stable Revit Reference
-        ↓
-native dimension
-```
+- geometry meaning → [`../geometry/`](../geometry/);
+- reference selection → [`../references/`](../references/);
+- placement policy → [`../layout/`](../layout/);
+- which result is current across reruns → [`../regeneration/`](../regeneration/);
+- transaction/native validity → [`../revit-boundary/`](../revit-boundary/).
 
-These curves do not become a second structural model and must remain clearly owned as generated annotation support.
-
-## Result completeness
-
-A valid zone normally requires overall width and height dimensions.
-
-Directional grid dimensions are conditional.
-
-```text
-valid zone
-→ overall width + overall height
-
-valid directional grid reference
-→ corresponding grid offset dimension
-
-missing/invalid optional reference
-→ omit only affected optional dimension
-```
-
-If a required dimension cannot be realized safely, the zone result may be considered incomplete and handled according to the failure policy rather than silently claiming success.
-
-## Native-result invariant
-
-The output must remain native Revit annotation that behaves as Revit annotation after creation.
-
-The system does not render a custom overlay or external drawing layer.
-
-## Relationship to regeneration
-
-Annotations owns **what the current generated result means**.
-
-Regeneration owns **which generated result is current and how the previous one is replaced**.
+Supporting detail curves are plugin-owned technical support for annotation references; they do not become a second structural model.

@@ -1,131 +1,97 @@
 # System View
 
-This area owns the **cross-system meaning** of Rebar AutoDim.
+This area owns the **cross-system meaning and synthesis** of Rebar AutoDim.
 
-Rebar AutoDim is not modeled as a collection of Revit API calls. It is a deterministic annotation system that interprets structural model geometry in the context of an active view and produces a regenerable native annotation result without changing the source reinforcement design.
+Rebar AutoDim is a deterministic annotation system running inside Autodesk Revit. It interprets existing structural evidence in the active-view context and creates one regenerable native annotation result per supported source zone without changing reinforcement design data.
 
 ## System boundary
 
-Inside the analyzed system:
+```text
+Structural Engineer
+        ↓ run / review
+Rebar AutoDim
+        ↕
+Autodesk Revit 2025
+├── active view           read
+├── Area Reinforcement    read
+├── structural grids      read
+├── native annotations    plugin-owned write
+└── transactions          host authority
+```
 
-- command execution scope;
-- interpretation of the active Revit view;
-- supported `Area Reinforcement` selection;
-- normalized reinforcement-zone geometry;
-- structural-reference resolution;
-- dimension intent and placement;
-- generated annotation-set semantics;
-- tracking and regeneration of plugin-owned output;
-- failure isolation and transaction safety.
+Revit owns source model/view state and native API validity. Rebar AutoDim owns the narrow analytical transformation from that evidence to generated annotation intent.
 
-Outside the system but relevant through boundaries:
-
-- Autodesk Revit internals;
-- structural-design ownership of `Area Reinforcement`;
-- project-wide grid modeling decisions;
-- manually created annotations unrelated to plugin output;
-- arbitrary annotation collision solving;
-- unsupported reinforcement shapes and unsupported view types.
-
-Revit owns the host model and API behavior. Rebar AutoDim owns how valid model evidence is interpreted into its annotation result.
-
-## Responsibility map
+## Responsibility route
 
 ```text
-EXECUTION CONTEXT
-what view and source zones are being processed?
-        ↓
-GEOMETRY
-what does each supported zone mean in view coordinates?
-        ↓
-REFERENCES
-which model/reference objects may dimension that geometry?
-        ↓
-LAYOUT
-which dimensions should exist and where should they be placed?
-        ↓
-ANNOTATIONS
-what native Revit annotation result represents that intent?
-        ↓
-REGENERATION
-how is plugin-owned output replaced safely on the next run?
+Execution Context
+→ Geometry
+→ References
+→ Layout
+→ Annotations
+→ Regeneration
+        ↕
+Revit Host Boundary
 ```
 
-`revit-boundary/` describes the host/API constraints used by all of these responsibilities.
+- [`execution-context/`](../execution-context/) — where the command may run and what enters analysis;
+- [`geometry/`](../geometry/) — what a supported zone means in view space;
+- [`references/`](../references/) — what boundaries/grids should be dimensioned;
+- [`layout/`](../layout/) — where intended dimensions are placed;
+- [`annotations/`](../annotations/) — what constitutes one generated result;
+- [`regeneration/`](../regeneration/) — which result is current across reruns;
+- [`revit-boundary/`](../revit-boundary/) — how intent crosses the host/API boundary safely;
+- [`evidence/`](../evidence/) — traceability and observed implementation outcome.
 
-## Core invariants
+## Canonical system documents
+
+### [`invariants.md`](invariants.md)
+Cross-cutting rules that must survive implementation refactoring.
+
+### [`processing-outcomes.md`](processing-outcomes.md)
+Command, zone and annotation-target outcome semantics, including the distinction between optional output and failed realization.
+
+### [`processing-flow.md`](processing-flow.md)
+End-to-end synthesis showing handoffs between responsibility owners.
+
+## Central distinctions
 
 ```text
-source reinforcement geometry
-!= generated annotation geometry
+source structural model
+!= plugin-generated annotation layer
 
-model XYZ orientation
-!= drawing/view orientation
+model XYZ
+!= active-view annotation frame
 
-nearest grid globally
-!= nearest valid grid for a direction
+semantic target
+!= Revit Reference representation
 
-missing optional grid reference
-!= invalid reinforcement zone
+missing optional grid
+!= annotation failure
 
-successful Revit element creation
-!= permission to modify source reinforcement
+valid zone
+!= successful committed annotation result
 
-re-run
-!= append another annotation set
-
-uncertain geometry/reference
-→ do not generate an uncertain dimension
+rerun
+!= append another result
 ```
 
-The detailed rules should live with the responsibility that owns them rather than in a global business-rules document.
+## Verification principle
 
-## End-to-end system flow
-
-```mermaid
-flowchart TD
-    U[User runs command] --> C[Execution Context]
-    C --> G[Geometry]
-    G --> R[Reference Resolution]
-    R --> L[Layout]
-    L --> A[Annotation Result]
-    A --> T[Revit transaction]
-    T --> O[Native dimensions + metadata]
-    O --> X[Regeneration ownership]
-
-    H[Revit host model] --> C
-    H --> G
-    H --> R
-    H --> T
-
-    G -. invalid zone .-> S[Skip affected zone]
-    R -. missing optional grid .-> L
-    T -. unsafe write failure .-> B[Rollback]
-```
-
-## Evidence status
-
-This repository describes a real implemented Revit automation case.
-
-The important distinction is:
+A good local model is not enough. For a representative zone, the full chain must remain coherent:
 
 ```text
-CANONICAL SYSTEM KNOWLEDGE
-→ what the plugin must mean and guarantee
-
-IMPLEMENTATION EVIDENCE
-→ how Revit API constructs, components and code realize that meaning
+eligible source
+→ trustworthy ZoneGeometry
+→ correct semantic targets
+→ deterministic placement
+→ complete intended result
+→ valid Revit realization
+→ one current owned result
 ```
 
-Implementation evidence may reveal new facts and force the system model to reopen, but a class name or API method is not automatically the canonical owner of a system rule.
+Any contradiction reopens the local owner that made the invalid claim.
 
-## Related areas
+## Migration audit
 
-- [`execution-context/`](../execution-context/) — active-view scope and candidate processing context;
-- [`geometry/`](../geometry/) — normalized zone semantics;
-- [`references/`](../references/) — directional grids and dimensionable references;
-- [`layout/`](../layout/) — dimension intent and placement policy;
-- [`annotations/`](../annotations/) — native generated result semantics;
-- [`regeneration/`](../regeneration/) — repeated execution and generated-output ownership;
-- [`revit-boundary/`](../revit-boundary/) — host API, transactions and read/write boundary;
-- [`evidence/`](../evidence/) — screenshots and outcome evidence.
+The old `01–09` document-oriented structure has been decomposed into these canonical owners. Historical identifier coverage and removal status are recorded in [`legacy-knowledge-map.md`](legacy-knowledge-map.md) and [`../evidence/legacy-traceability.md`](../evidence/legacy-traceability.md).

@@ -1,131 +1,41 @@
 # Regeneration and Generated-Output Ownership
 
-This area owns the lifecycle of plugin-generated output across repeated command execution.
-
-It answers:
-
-> **Which annotation result belongs to this source zone, and how is that result replaced safely when the model or view changes?**
-
-## Owned knowledge
-
-Regeneration owns:
-
-- association between source `Area Reinforcement` and plugin-generated result;
-- persistent generation metadata needed to locate previous output;
-- full-replacement strategy;
-- behavior when previous output is missing or partially edited;
-- repeated-execution equivalence;
-- stale-result removal before creating the new committed result.
-
-It does **not** own:
-
-- what dimensions belong in the annotation set — [`annotations/`](../annotations/);
-- how source geometry is interpreted — [`geometry/`](../geometry/);
-- transaction rollback mechanics — [`revit-boundary/`](../revit-boundary/).
+This area owns **which generated annotation result belongs to a source zone and how that result evolves across repeated command execution**.
 
 ## Ownership model
 
 ```text
-Area Reinforcement
-        ↓ source identity
-Generation Metadata
-        ↓ identifies
-Current Generated Annotation Result
+Area Reinforcement source identity
+        ↓
+Generation ownership metadata
+        ↓
+One current plugin-owned annotation result
 ```
 
-The source reinforcement owns the structural design. Rebar AutoDim owns only the annotation result that it generated for that source.
-
-## Full regeneration strategy
-
-Repeated execution uses replacement rather than incremental synchronization.
+## Core strategy
 
 ```text
-find previous plugin-owned result
-        ↓
-delete previous result
-        ↓
-read current source/context
-        ↓
-recalculate complete result
-        ↓
-create new annotation set
-        ↓
-store updated ownership metadata
+find previous result
+→ replace whole result
+→ reread current Revit evidence
+→ recalculate
+→ commit one new current result
 ```
 
-This policy is a system decision, not merely an implementation convenience.
+Rebar AutoDim deliberately regenerates instead of incrementally patching individual dimensions.
 
 ## Idempotency meaning
 
-For an unchanged source and execution context:
+For unchanged source evidence and the same view context, repeated execution converges to a logically equivalent result. Native element IDs do not need to remain identical.
 
-```text
-Run 1 → Result A
-Run 2 → replace A → Result A'
-```
+## Canonical detail
 
-`A'` should be semantically equivalent to `A`.
+→ [`result-lifecycle.md`](result-lifecycle.md) — one-current-result rule, full regeneration, manual deletion/partial edit recovery, equivalence and failure semantics.
 
-Idempotency therefore means:
+## Does not own
 
-> **Repeated execution converges to one equivalent current result rather than accumulating output.**
+- what dimensions constitute a result → [`../annotations/`](../annotations/);
+- source geometry → [`../geometry/`](../geometry/);
+- rollback mechanics → [`../revit-boundary/`](../revit-boundary/).
 
-It does not require preserving Revit element IDs between runs.
-
-## Model-change behavior
-
-When source geometry or relevant view context changes, the old annotation set becomes stale evidence.
-
-```text
-source/context changed
-        ↓
-previous generated result no longer canonical
-        ↓
-next run recalculates from current Revit state
-```
-
-The plugin does not attempt to infer which individual dimension is still reusable.
-
-## Missing previous result
-
-A user may manually delete the generated group while metadata remains.
-
-```text
-metadata exists
-+
-referenced result missing
-        ↓
-treat previous result as absent
-        ↓
-generate current result
-        ↓
-repair metadata association
-```
-
-This is recoverable and must not block processing.
-
-## Partial manual modification
-
-If users partially modify or delete plugin-owned output, the next run does not merge manual edits with calculated state.
-
-```text
-partial generated result
-        ↓
-remove remaining plugin-owned output
-        ↓
-regenerate complete result
-```
-
-This boundary prevents ambiguous ownership between manual edits and automation.
-
-## Atomic replacement requirement
-
-The desired system outcome is never:
-
-```text
-old result partially deleted
-+
-new result partially created
-```
-
-Transaction design must protect regeneration from leaving such a mixed state. The technical realization belongs to [`revit-boundary/`](../revit-boundary/).
+The desired state is never a mixture of partially removed old output and partially created new output. Transaction design must protect the ownership transition.

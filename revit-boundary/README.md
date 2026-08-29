@@ -2,136 +2,69 @@
 
 This area owns the explicit boundary between Rebar AutoDim system meaning and Autodesk Revit host/API behavior.
 
-It answers:
-
-> **Which Revit facts and capabilities does the plugin consume, what may it write, and what host constraints must the system respect?**
-
-## Revit as external authority
-
-Revit is authoritative for:
-
-- document and view state;
-- source `Area Reinforcement` elements and their geometry;
-- structural grids and their geometry/references;
-- validity rules for Revit elements and references;
-- transaction semantics;
-- native dimension creation behavior.
-
-Rebar AutoDim is authoritative for:
-
-- how those facts are interpreted for its supported annotation problem;
-- which dimension intent should be produced;
-- ownership of its own generated annotation result.
+## Authority split
 
 ```text
-Revit evidence / capabilities
-!=
-Rebar AutoDim analytical decisions
+Revit owns
+→ document/view state
+→ source element geometry
+→ native Reference validity
+→ native dimension validity
+→ transaction semantics
+
+Rebar AutoDim owns
+→ interpretation for its supported annotation problem
+→ semantic dimension targets
+→ generated-result ownership
 ```
 
 ## Read boundary
 
-The plugin may read:
-
-- active document/view properties;
-- view scale/orientation/crop context;
-- visible `Area Reinforcement` identity and geometry;
-- visible structural grid geometry and references;
-- plugin-generated metadata and previous result identity.
-
-Reading a Revit fact does not transfer ownership of that fact to the plugin.
+The plugin consumes active-view context, `Area Reinforcement`, structural grids and existing plugin metadata.
 
 ## Write boundary
 
-The plugin writes only to its annotation layer:
+The plugin writes only its annotation layer:
+
+- supporting detail curves;
+- native dimensions;
+- grouping/association elements where used;
+- generation metadata;
+- deletion of previous plugin-owned output.
+
+Source reinforcement and structural-grid design data remain unchanged.
+
+## Core translation
 
 ```text
-Detail Curves
-Dimensions
-Generated Groups / owned annotation elements
-Generation Metadata
+semantic target
+→ Revit-compatible native references
+→ valid dimension line
+→ native annotation creation
 ```
 
-It must not modify source reinforcement geometry as part of dimension generation.
+A host/API workaround may realize the intended meaning but must not redefine it.
 
-## Dimension API constraint
+## Canonical detail
 
-A semantic dimension intent requires Revit-compatible geometric references and a valid dimension line.
+→ [`transaction-and-failure-model.md`](transaction-and-failure-model.md) — reads/writes, one-zone transaction boundary, native rejection, rollback, fallback and verification.
+
+## Failure scope
+
+The system distinguishes:
 
 ```text
-semantic targets
-+
-Revit-compatible References
-+
-valid line in active annotation plane
-        ↓
-NewDimension / native dimension creation
+unsupported context / invalid geometry
+→ fail before writes or skip zone
+
+missing optional semantic target
+→ not a failure
+
+native realization failure
+→ affected intended result cannot be silently reclassified
+
+zone transaction failure
+→ rollback that zone
 ```
 
-If Revit rejects the representation, the system must not reinterpret the structural target merely to force a successful API call.
-
-## Supporting reference realization
-
-When the raw reinforcement boundary cannot provide stable dimension references, the plugin may create supporting detail curves.
-
-This is a host-boundary adaptation:
-
-```text
-canonical zone geometry
-        ↓
-Revit API limitation
-        ↓
-supporting detail geometry
-        ↓
-usable Revit References
-```
-
-The workaround realizes existing system meaning; it does not own that meaning.
-
-## Transaction boundary
-
-All writes occur inside Revit transactions.
-
-At the system level, the requirement is atomic safety:
-
-```text
-prepare current result
-        ↓
-transaction
-├── remove old plugin-owned output
-├── create supporting geometry
-├── create dimensions
-├── persist ownership metadata
-└── commit
-```
-
-When safe completion is impossible:
-
-```text
-unsafe write failure
-        ↓
-rollback affected transaction
-        ↓
-source structural model remains unchanged
-```
-
-## Failure locality
-
-There are two different failure scopes:
-
-```text
-local annotation/reference failure
-→ omit/skip affected output where system rules allow
-→ continue other valid work
-
-transaction/document safety failure
-→ rollback affected write scope
-```
-
-These must not be collapsed into one generic exception strategy.
-
-## Host boundary does not own workflow rules
-
-Revit API methods, transactions and element classes are implementation evidence.
-
-Rules such as directional grid selection, required width/height dimensions, regeneration semantics or skip-uncertain behavior belong to their canonical system owners even if their implementation is expressed through Revit API calls.
+The historical interaction model already used one transaction per supported zone, aligning technical atomicity with one independently meaningful annotation result.
