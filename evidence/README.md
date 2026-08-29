@@ -1,46 +1,43 @@
 # Evidence
 
-This area contains supporting evidence about the real Rebar AutoDim case.
+This area contains **supporting evidence and migration traceability** for the real Rebar AutoDim case.
 
-Evidence helps validate the system model, but it is **not a second canonical owner of system rules**.
+Evidence validates the system model but does not become a second owner of system rules.
 
 ## Current evidence
 
-The legacy result section currently contains:
+- [`outcome.md`](outcome.md) — before/after workflow, observed implementation result and real-world outcome;
+- `before.jpg` — manual-state screenshot;
+- `after.jpg` — generated-result screenshot;
+- [`legacy-traceability.md`](legacy-traceability.md) — historical `BR / FR / NFR / AC` coverage mapped to current canonical owners.
 
-- before screenshot — [`../09-Result/before.jpg`](../09-Result/before.jpg);
-- after screenshot — [`../09-Result/after.jpg`](../09-Result/after.jpg);
-- implementation/project outcome — [`../09-Result/outcome.md`](../09-Result/outcome.md).
+## Evidence can support claims such as
 
-These artifacts will be relocated during the structural migration after the canonical knowledge owners are stabilized.
+- the original manual workflow existed;
+- the generated annotation layout was produced inside Revit;
+- the implementation exercised view-relative geometry and native references;
+- regeneration behavior existed in the working solution;
+- the solution was accepted and used in regular company work.
 
-## What evidence can prove
-
-Evidence may support claims such as:
-
-- the manual annotation problem existed;
-- the generated native annotation layout was produced in Revit;
-- the solution was implemented and used;
-- the automated result materially changed the annotation workflow.
-
-Evidence does not independently define:
+## Evidence does not own
 
 - geometry rules;
-- grid-selection authority;
-- placement policy;
+- reference-selection authority;
+- layout policy;
+- annotation completeness;
 - regeneration semantics;
-- Revit write boundaries.
+- Revit transaction behavior.
 
-Those meanings remain with the corresponding canonical areas.
+Those meanings live with their corresponding responsibility owners.
 
 ## Core principle
 
 ```text
-screenshot / implementation artifact / observed result
-→ EVIDENCE
+observed result / screenshot / historical ID / implementation fact
+→ evidence
 
-canonical system rule
-→ RESPONSIBILITY OWNER
+current system meaning
+→ canonical responsibility owner
 ```
 
-If implementation evidence contradicts the documented system model, the contradiction should reopen the relevant canonical knowledge rather than be hidden by the portfolio narrative.
+If evidence contradicts the current system model, the evidence reopens the relevant owner instead of silently creating a competing truth.
