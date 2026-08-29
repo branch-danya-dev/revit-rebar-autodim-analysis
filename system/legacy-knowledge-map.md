@@ -1,12 +1,10 @@
-# Legacy Knowledge Migration Map
+# Legacy Knowledge Migration Audit
 
-This document records how the current artifact/process-oriented repository will be decomposed into SSAD canonical responsibility owners.
+This document records how the original numbered, artifact-oriented repository was decomposed into SSAD canonical responsibility owners.
 
-It is a migration/audit aid, not a second source of truth.
+It is a historical audit aid, not a second source of truth.
 
-## Current repository shape
-
-The existing root is organized by analysis/document sequence:
+## Status
 
 ```text
 01-Scope-and-Problem/
@@ -18,114 +16,103 @@ The existing root is organized by analysis/document sequence:
 07-Errors-and-Rerun/
 08-Traceability/
 09-Result/
+        ↓
+claims decomposed by meaning
+        ↓
+canonical owner assigned
+        ↓
+traceability retained as evidence
+        ↓
+legacy tree retired
 ```
 
-That shape is useful as a record of how the analysis was presented, but it mixes multiple system owners inside document categories.
+Historical versions remain available in Git history.
 
-## Migration rule
+## Migration rule used
 
 ```text
 legacy artifact
 → identify individual system claims
 → assign canonical responsibility owner
-→ rewrite/link near that owner
-→ preserve useful requirement IDs as traceability evidence
-→ remove superseded artifact tree only after coverage is verified
+→ rewrite near that owner
+→ preserve only useful traceability/evidence
+→ remove superseded artifact tree
 ```
 
-## Initial knowledge map
+## Final ownership map
 
-| Legacy source | Main knowledge inside it | Target canonical owners |
-|---|---|---|
-| `01-Scope-and-Problem/` | problem, system boundary, constraints | `system/`, `execution-context/`, `evidence/` |
-| `02-AS-IS-and-TO-BE/` | manual workflow, target processing flow | `system/` + local responsibility flows |
-| `03-Requirements/` | geometry, reference, placement, safety, rerun rules | split across `execution-context/`, `geometry/`, `references/`, `layout/`, `annotations/`, `regeneration/`, `revit-boundary/` |
-| `04-System-Design/` | components, pipeline, system context | `system/` + implementation evidence linked from local owners |
-| `05-Geometry-and-Placement/` | normalized geometry, directional grids, layout | `geometry/`, `references/`, `layout/` |
-| `06-Revit-API-Interaction/` | host reads/writes, references, transaction sequence | `revit-boundary/`, `annotations/`, `regeneration/` |
-| `07-Errors-and-Rerun/` | skip/continue/rollback behavior, idempotency | local failure semantics + `regeneration/` + `revit-boundary/` |
-| `08-Traceability/` | requirement-to-behavior mapping | legacy IDs colocated with canonical owners; optional migration audit |
-| `09-Result/` | before/after screenshots and outcome | `evidence/` |
+| Removed legacy area | Canonical destination |
+|---|---|
+| Scope / problem / system context | `system/`, `execution-context/`, `evidence/` |
+| AS-IS / TO-BE workflows | `system/processing-flow.md`, `evidence/outcome.md` |
+| Business rules / FR / NFR / AC | split across local responsibility owners; audit in `evidence/legacy-traceability.md` |
+| Component/system design | system synthesis + local owner boundaries; implementation class names are no longer knowledge hierarchy |
+| Geometry processing | `geometry/zone-model.md` |
+| Grid selection / semantic references | `references/reference-policy.md` |
+| Dimension placement | `layout/placement-policy.md` |
+| Generated output semantics | `annotations/result-model.md` |
+| Re-run / idempotency | `regeneration/result-lifecycle.md` |
+| Revit API interaction / transaction sequence | `revit-boundary/transaction-and-failure-model.md` |
+| Edge cases | local owners + `system/processing-outcomes.md` |
+| Requirement traceability matrix | `evidence/legacy-traceability.md` |
+| Before/after / project outcome | `evidence/` |
+| PlantUML process/context diagrams | current owner-local Markdown/Mermaid system views |
 
-## Why requirements cannot remain one canonical owner
+## What changed analytically
 
-The current `business-rules.md` contains rules from several distinct responsibilities.
+The migration did more than relocate files.
 
-Examples:
+### Document type stopped being ownership
+
+A single old `business-rules.md` contained claims belonging to execution context, geometry, references, layout, annotations, regeneration and host safety. Those claims now live with the responsibility that can explain and verify them.
+
+### Semantic references were separated from Revit references
 
 ```text
-BR-001 / BR-002
-→ execution context + geometry eligibility
-
-BR-003
-→ geometry/view-space interpretation
-
-BR-005 / BR-006 / BR-007 / BR-008 / BR-009
-→ reference resolution
-
-BR-010 / BR-011
-→ layout
-
-BR-012 / BR-013
-→ annotation + Revit boundary
-
-BR-014
-→ regeneration
-
-BR-015 / BR-016
-→ local failure policy + system safety
+what should be dimensioned
+!=
+how Revit can technically reference it
 ```
 
-The IDs remain useful traceability anchors, but the file category `Business Rules` should not remain the owner of all those meanings.
+This keeps API workarounds from becoming owners of structural meaning.
 
-## Component model interpretation
-
-The existing implementation model is useful evidence:
+### Missing optional output was separated from failed output
 
 ```text
-Command Handler
-View Context
-Zone Collector
-Geometry Processor
-Grid Resolver
-Placement Engine
-Annotation Generator
-Generation Tracker
+no valid grid exists
+→ NOT_APPLICABLE
+
+valid target exists but native realization fails
+→ FAILED_WRITE
 ```
 
-However, SSAD does not require the knowledge hierarchy to mirror class/component names.
+This distinction is now explicit across `references/`, `annotations/` and `revit-boundary/`.
 
-For example:
+### Zone outcome was separated from command outcome
+
+A command can complete with valid committed zones, skipped unsupported zones and isolated failures. One broad `success/failure` label is insufficient for the system.
+
+### Transaction scope was aligned with result ownership
+
+The historical Revit interaction sequence already used one write transaction per supported zone. The canonical model now explains why that boundary matters: one source zone maps to one independently meaningful generated result.
+
+## Legacy ID coverage
+
+All historical identifiers are accounted for:
 
 ```text
-View Context + part of Zone Collector
-→ execution-context/
-
-Geometry Processor
-→ geometry/
-
-Grid Resolver + reference-realization rules
-→ references/
-
-Placement Engine
-→ layout/
-
-Annotation Generator
-→ annotations/ + revit-boundary/
-
-Generation Tracker
-→ regeneration/
+BR-001..016
+FR-001..022
+NFR-001..012
+AC-001..022
 ```
 
-This allows code to be refactored without forcing the system knowledge architecture to change when the underlying responsibility remains stable.
+See [`../evidence/legacy-traceability.md`](../evidence/legacy-traceability.md).
 
-## Completion criterion
+These IDs are traceability anchors only. They no longer define repository navigation or canonical ownership.
 
-The migration is complete when:
+## Completion result
 
-1. every significant system rule has one canonical responsibility owner;
-2. requirement IDs remain only as traceability evidence rather than repository architecture;
-3. PlantUML/process artifacts are either relocated as owner-local visuals, converted to current Mermaid views or retired;
-4. before/after evidence is separated from canonical system meaning;
-5. the old numbered artifact tree can be removed without losing active knowledge;
-6. the root README navigates by system question rather than by document type.
+The structural migration is complete when the active branch contains only system-shaped knowledge areas and supporting evidence.
+
+After the legacy deletion commit, future changes should be evidence-driven changes to the system model rather than further taxonomy migration.
